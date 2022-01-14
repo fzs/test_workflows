@@ -1,0 +1,45 @@
+
+
+name: Push to flaix
+
+
+on:
+  workflow_dispatch:
+  push:
+
+env:
+  GH_UPSTREAM_ORG: flaix
+
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "greet"
+  flaix:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Checkout upstream repo
+        uses: actions/checkout@v2
+        with:
+          path: upstream
+          repository: ${{ env.GH_UPSTREAM_ORG }}/release-gitblit-sim
+          token: ${{ secrets.GITBLIT_RELEASE_PAT }}
+          ref: develop
+
+
+      - name: Set up Git properties
+        run: |
+          set -x 
+          git config --global user.name "flaix"
+          git config --global user.email "2362065+flaix@users.noreply.github.com"
+  
+
+      - name: Add commit and push
+        working-directory: upstream
+        run: |
+          date >> delete.me
+          git commit -a -m "This is a timestamp"
+          git status
+          git push origin develop
