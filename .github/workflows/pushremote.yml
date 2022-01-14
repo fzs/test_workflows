@@ -81,7 +81,8 @@ jobs:
           cd gitblit-GO
           ls -l
           ./gitblit.sh > gitblit.log 2>&1 &
-          wait=240
+          sleep 2
+          wait=238
           ok=0
           while [ $wait -gt 0 ] ; do
             if grep "All managers started" gitblit.log ; then
@@ -111,6 +112,7 @@ jobs:
           done 
           
           ./gitblit-stop.sh
+          sleep 2
 
           if [ $ok != 7 ] ; then
             echo "Gitblit could not be started successfully."
