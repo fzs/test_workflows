@@ -1,6 +1,6 @@
 
 
-name: Push to flaix
+name: Build Gitblit 
 
 
 on:
@@ -14,7 +14,7 @@ env:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "greet"
-  flaix:
+  build-and-test:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
@@ -23,9 +23,16 @@ jobs:
       - name: Checkout upstream repo
         uses: actions/checkout@v2
         with:
-          path: upstream
-          repository: ${{ env.GH_UPSTREAM_ORG }}/gitblit-maven
+          path: gitblit
+          repository: ${{ env.GH_UPSTREAM_ORG }}/gitblit
           token: ${{ secrets.GITBLIT_RELEASE_PAT }}
+          submodules: true
+
+
+      - name: Check environment
+        env:
+          GITHUB_CTX_ENV: ${{ toJSON(env) }}
+        run: echo "$GITHUB_CTX_ENV"
 
 
       - name: Set up Git properties
@@ -34,13 +41,79 @@ jobs:
           git config --global user.name "flaix"
           git config --global user.email "2362065+flaix@users.noreply.github.com"
   
+      - name: Setup Java 7
+        uses: actions/setup-java@v1
+        with:
+          java-version: 7
 
-      - name: Add commit and push
-        working-directory: upstream
+      - name: Report Java version
         run: |
-          git checkout -b release
-          date >> delete.me
-          git add delete.me
-          git commit -m "This is a timestamp"
-          git status
-          git push -f origin release
+          java -version
+          javac -version
+
+      - name: Cache moxie and dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${HOME}/.moxie
+          key: ${{ runner.os }}-build_gitblit-try1
+
+      - name: Setup Moxie
+        run: |
+          wget http://gitblit.github.io/moxie/maven/com/gitblit/moxie/moxie+ant/0.9.4/moxie+ant-0.9.4.tar.gz
+          tar -xzf moxie+ant-0.9.4.tar.gz
+          moxie-0.9.4/bin/moxie -version
+
+
+      - name: Build with Moxie
+        working-directory: gitblit
+        run:  ../moxie-0.9.4/bin/moxie
+
+
+      - name: Build GO with Moxie
+        working-directory: gitblit
+        run:  ../moxie-0.9.4/bin/moxie buildGO
+
+
+      - name: Test running Gitblit GO
+        run:  |
+          mkdir gitblit-GO
+          tar -xzf gitblit/build/target/gitblit-*.tar.gz -C gitblit-GO --strip-components 1
+          cd gitblit-GO
+          ./gitblit.sh > gitblit.log 2>&1 &
+          wait=240
+          ok=0
+          while [ $wait -gt 0 ] ; do
+            if grep "All managers started" gitblit.log ; then
+              $((ok += 1))
+            fi
+            if grep "Started Wicket" gitblit.log ; then
+              $((ok += 2))
+            fi
+            if grep "Started ServerConnector" gitblit.log ; then
+              $((ok += 4))
+            fi
+
+            if [ $ok == 7 ] ; then
+              echo "Gitblit started okay"
+              wait=0
+            else
+              echo "Waiting for Gitblit to start successfully"
+              sleep 2
+              $((wait -= 2))
+            fi
+
+            if grep "Failed" gitblit.log ; then
+              echo "Failure deteceted when starting Gitblit."
+              ok=-1
+              wait=0
+            fi
+          done 
+          
+          ./gitblit-stop.sh
+
+          if [ $ok != 7 ] ; then
+            echo "Gitblit could not be started successfully."
+            exit 11
+          fi
+
+ 
