@@ -54,7 +54,7 @@ jobs:
       - name: Cache moxie and dependencies
         uses: actions/cache@v2
         with:
-          path: ${HOME}/.moxie
+          path: ~/.moxie
           key: ${{ runner.os }}-build_gitblit-try1
 
       - name: Setup Moxie
@@ -79,18 +79,19 @@ jobs:
           mkdir gitblit-GO
           tar -xzf gitblit/build/target/gitblit-*.tar.gz -C gitblit-GO --strip-components 1
           cd gitblit-GO
+          ls -l
           ./gitblit.sh > gitblit.log 2>&1 &
           wait=240
           ok=0
           while [ $wait -gt 0 ] ; do
             if grep "All managers started" gitblit.log ; then
-              $((ok += 1))
+              ok=$((ok | 1))
             fi
             if grep "Started Wicket" gitblit.log ; then
-              $((ok += 2))
+              ok=$((ok | 2))
             fi
             if grep "Started ServerConnector" gitblit.log ; then
-              $((ok += 4))
+              ok=$((ok | 4))
             fi
 
             if [ $ok == 7 ] ; then
@@ -99,7 +100,7 @@ jobs:
             else
               echo "Waiting for Gitblit to start successfully"
               sleep 2
-              $((wait -= 2))
+              : $((wait -= 2))
             fi
 
             if grep "Failed" gitblit.log ; then
