@@ -40,6 +40,7 @@ jobs:
         working-directory: upstream
         run: |
           date >> delete.me
-          git commit -a -m "This is a timestamp"
+          git add delete.me
+          git commit -m "This is a timestamp"
           git status
           git push origin develop
