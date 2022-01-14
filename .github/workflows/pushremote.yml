@@ -24,9 +24,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: upstream
-          repository: ${{ env.GH_UPSTREAM_ORG }}/release-gitblit-sim
+          repository: ${{ env.GH_UPSTREAM_ORG }}/gitblit-maven
           token: ${{ secrets.GITBLIT_RELEASE_PAT }}
-          ref: develop
 
 
       - name: Set up Git properties
@@ -39,8 +38,9 @@ jobs:
       - name: Add commit and push
         working-directory: upstream
         run: |
+          git checkout -b release
           date >> delete.me
           git add delete.me
           git commit -m "This is a timestamp"
           git status
-          git push origin develop
+          git push -f origin release
