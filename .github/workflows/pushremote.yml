@@ -103,6 +103,9 @@ jobs:
           echo "REL_USER_EMAIL=${user_email}"
           echo "REL_USER_EMAIL=${user_email}" >> $GITHUB_ENV
 
+          echo "REL_USER=${REL_USER}" >> ../relinfo.sh
+          echo "REL_USER_NAME=${user_name}" >> ../relinfo.sh
+          echo "REL_USER_EMAIL=${user_email}" >> ../relinfo.sh
 
 
       - name: Get SHA
@@ -112,6 +115,11 @@ jobs:
         run:  |
           gh release download --repo ${GH_ORG}/gitblit v${GITBLIT_VERSION} --pattern 'gitblit-*.tar.gz' --dir gitblit-GO
           sha256sum gitblit-GO/gitblit-${GITBLIT_VERSION}.tar.gz
+          sha=$(sha256sum gitblit-GO/gitblit-${GITBLIT_VERSION}.tar.gz | cut -f1 -d' ')
+          echo "SHA=$sha" >> ../relinfo.sh
+
+          cat ../relinfo.sh
+          
 
 
 
