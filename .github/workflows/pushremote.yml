@@ -45,7 +45,7 @@ jobs:
         run: |
           echo "Event sender: ${{github.event.sender.login}}"
           if [ ${{github.event_name}} == "push" ] ; then
-            echo "REL_USER=${{ github.event.pusher.name }}"
+            echo "REL_USER=${{ github.event.pusher.name }}" >> $GITHUB_ENV
             echo "REL_USER_EMAIL=${{ github.event.pusher.email }}" >> $GITHUB_ENV
           elif [ ${{github.event_name}} == "workflow_dispatch" ] ; then
             echo "REL_USER=??"
@@ -110,7 +110,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:  |
-          gh release download v${GITBLIT_VERSION} --pattern 'gitblit-*.tar.gz' --dir gitblit-GO
+          gh release download --repo ${GH_ORG}/gitblit v${GITBLIT_VERSION} --pattern 'gitblit-*.tar.gz' --dir gitblit-GO
           sha256sum gitblit-GO/gitblit-${GITBLIT_VERSION}.tar.gz
 
 
