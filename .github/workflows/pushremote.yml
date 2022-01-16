@@ -17,8 +17,8 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    outputs:
+      gitblit_sha: ${{ steps.sha.outputs.sha }}
     steps:
 
       - name: Check environment
@@ -48,7 +48,7 @@ jobs:
             echo "REL_USER=${{ github.event.pusher.name }}" >> $GITHUB_ENV
             echo "REL_USER_EMAIL=${{ github.event.pusher.email }}" >> $GITHUB_ENV
           elif [ ${{github.event_name}} == "workflow_dispatch" ] ; then
-            echo "REL_USER=??"
+            echo "REL_USER={{github.event.sender.login}}" >> $GITHUB_ENV
           fi
 
 
@@ -109,6 +109,7 @@ jobs:
 
 
       - name: Get SHA
+        id: sha
         working-directory: gitblit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -119,10 +120,21 @@ jobs:
           echo "SHA=$sha" >> ../relinfo.sh
 
           cat ../relinfo.sh
+
+          echo "::set-output name=sha::$sha"
           
+
+      - name: Uload release info
+        uses: actions/upload-artifact@v2
+        with:
+          name: release-info
+          path: |
+            relinfo.sh
 
 
 
   call_workflow:
     uses: fzs/test_workflows/.github/workflows/called_wf.yaml@main
     needs: build
+    with:
+      foo: ${{ needs.build.outputs.sha }}

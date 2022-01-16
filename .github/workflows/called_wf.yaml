@@ -6,6 +6,9 @@ on:
       foo:
         required: false
         type: string
+      bar:
+        required: false
+        type: string
 
 
 
@@ -42,13 +45,18 @@ jobs:
           echo "ls -la"
           ls -la
 
+      - name: Check inputs
+        run: |
+          echo "Input foo: ${{ inputs.foo }}"
+          echo "Input bar: ${{ inputs.bar }}"
+
       - name: Download release info results
         uses: actions/download-artifact@v2
         with:
           name: release-info
         continue-on-error: true
 
-      - name: Set info in encironment
+      - name: Set info in environment
         run: |
           if [ -f relinfo.sh ] ; then
             echo "Including release info in environemnt"
