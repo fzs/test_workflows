@@ -66,6 +66,8 @@ jobs:
 
       - name: Find out Git user
         working-directory: gitblit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # If present, use the user that triggered the release perform workflow with an action
           if [ -n "$REL_USER" ] ; then
