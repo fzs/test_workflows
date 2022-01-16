@@ -10,7 +10,7 @@ on:
 env:
   GH_ORG: fzs
   GH_UPSTREAM_ORG: flaix
-  GITBLIT_VERSION: 1.9.1
+  GITBLIT_VERSION: 1.9.2
 
 
 jobs:
