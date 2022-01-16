@@ -66,8 +66,6 @@ jobs:
 
       - name: Find out Git user
         working-directory: gitblit
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # If present, use the user that triggered the release perform workflow with an action
           if [ -n "$REL_USER" ] ; then
@@ -75,9 +73,11 @@ jobs:
             # Try to get the user's name
             gh_user_name=$(curl -s ${{github.event.sender.url}} | jq -r .name)
             if [ -n "$gh_user_name" ] ; then
+              echo "Checking commits for author name $gh_user_name"
               commit=$(git rev-list --all -i --max-count=1 --author="$gh_user_name")
             fi
-            if [ -n "$commit" ] ; then
+            if [ -z "$commit" ] ; then
+              echo "Checking commits for author id $REL_USER"
               commit=$(git rev-list --all -i --max-count=1 --author="$REL_USER")
             fi
 
@@ -87,24 +87,28 @@ jobs:
               user_email="$(git show --no-patch --pretty=format:"%ae" $commit)"
             else
               # Use the user name, but my email
+              echo "No commit found. Using $REL_USER and fixed email."
               user_name="$REL_USER"
               user_email="2362065+flaix@users.noreply.github.com"
             fi
           else
               # Use my user name and my email
+              echo "Nothing available, using fixed name and email."
               user_name="flaix"
               user_email="2362065+flaix@users.noreply.github.com"
           fi
 
           echo "REL_USER_NAME=${user_name}"
           echo "REL_USER_NAME=${user_name}" >> $GITHUB_ENV
-          echo "REL_USER_NAME=${user_email}"
-          echo "REL_USER_NAME=${user_email}" >> $GITHUB_ENV
+          echo "REL_USER_EMAIL=${user_email}"
+          echo "REL_USER_EMAIL=${user_email}" >> $GITHUB_ENV
 
 
 
       - name: Get SHA
         working-directory: gitblit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:  |
           gh release download v${GITBLIT_VERSION} --pattern 'gitblit-*.tar.gz' --dir gitblit-GO
           sha256sum gitblit-GO/gitblit-${GITBLIT_VERSION}.tar.gz
