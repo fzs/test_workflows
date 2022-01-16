@@ -103,8 +103,8 @@ jobs:
           echo "REL_USER_EMAIL=${user_email}"
           echo "REL_USER_EMAIL=${user_email}" >> $GITHUB_ENV
 
-          echo "REL_USER=${REL_USER}" >> ../relinfo.sh
-          echo "REL_USER_NAME=${user_name}" >> ../relinfo.sh
+          echo "REL_USER='${REL_USER}'" >> ../relinfo.sh
+          echo "REL_USER_NAME='${user_name}'" >> ../relinfo.sh
           echo "REL_USER_EMAIL=${user_email}" >> ../relinfo.sh
 
 
@@ -124,7 +124,7 @@ jobs:
           echo "::set-output name=sha::$sha"
           
 
-      - name: Uload release info
+      - name: Upload release info
         uses: actions/upload-artifact@v2
         with:
           name: release-info
@@ -137,4 +137,4 @@ jobs:
     uses: fzs/test_workflows/.github/workflows/called_wf.yaml@main
     needs: build
     with:
-      foo: ${{ needs.build.outputs.sha }}
+      foo: ${{ needs.build.outputs.gitblit_sha }}
