@@ -1,0 +1,48 @@
+name: Reusable workflow
+
+on:
+  workflow_call:
+    inputs:
+      foo:
+        required: false
+        type: string
+
+
+
+jobs:
+  
+  the_job:
+    name: Some reused job
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Get event environment
+        run: |
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "GITHUB_RFE: $GITHUB_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "GITHUB_EVENT_NAME: $GITHUB_EVENT_NAME"
+
+
+      - name: Check environment
+        env:
+          GITHUB_CTX_ENV: ${{ toJSON(env) }}
+        run: |
+          echo "$GITHUB_CTX_ENV"
+          echo "Environment:"
+          env
+
+      - name: Look around
+        run: |
+          echo "PWD:"
+          pwd
+
+          echo "ls -la"
+          ls -la
+
+      - name: Download release info results
+        uses: actions/download-artifact@v2
+        with:
+          name: release-info

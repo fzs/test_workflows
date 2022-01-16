@@ -8,115 +8,107 @@ on:
   push:
 
 env:
+  GH_ORG: fzs
   GH_UPSTREAM_ORG: flaix
+  GITBLIT_VERSION: 1.9.1
 
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "greet"
-  build-and-test:
+  build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Checkout upstream repo
-        uses: actions/checkout@v2
-        with:
-          path: gitblit
-          repository: ${{ env.GH_UPSTREAM_ORG }}/gitblit
-          token: ${{ secrets.GITBLIT_RELEASE_PAT }}
-          submodules: true
-
 
       - name: Check environment
         env:
           GITHUB_CTX_ENV: ${{ toJSON(env) }}
-        run: echo "$GITHUB_CTX_ENV"
-
-
-      - name: Set up Git properties
         run: |
-          set -x 
-          git config --global user.name "flaix"
-          git config --global user.email "2362065+flaix@users.noreply.github.com"
-  
-      - name: Setup Java 7
-        uses: actions/setup-java@v1
-        with:
-          java-version: 7
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "GITHUB_RFE: $GITHUB_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "GITHUB_EVENT_NAME: $GITHUB_EVENT_NAME"
+          echo "Event context:"
+          echo "$GITHUB_CTX_ENV"
 
-      - name: Report Java version
+
+      - name: Dump event payload
+        env:
+          GITHUB_CONTEXT_EVENT: ${{ toJSON(github.event) }}
         run: |
-          java -version
-          javac -version
+          echo "Action event name: ${{ github.event_name }}"
+          echo "$GITHUB_CONTEXT_EVENT"
 
-      - name: Cache moxie and dependencies
-        uses: actions/cache@v2
-        with:
-          path: ~/.moxie
-          key: ${{ runner.os }}-build_gitblit-try1
-
-      - name: Setup Moxie
+      - name: Get user from event
         run: |
-          wget http://gitblit.github.io/moxie/maven/com/gitblit/moxie/moxie+ant/0.9.4/moxie+ant-0.9.4.tar.gz
-          tar -xzf moxie+ant-0.9.4.tar.gz
-          moxie-0.9.4/bin/moxie -version
-
-
-      - name: Build with Moxie
-        working-directory: gitblit
-        run:  ../moxie-0.9.4/bin/moxie
-
-
-      - name: Build GO with Moxie
-        working-directory: gitblit
-        run:  ../moxie-0.9.4/bin/moxie buildGO
-
-
-      - name: Test running Gitblit GO
-        run:  |
-          mkdir gitblit-GO
-          tar -xzf gitblit/build/target/gitblit-*.tar.gz -C gitblit-GO --strip-components 1
-          cd gitblit-GO
-          ls -l
-          ./gitblit.sh > gitblit.log 2>&1 &
-          sleep 2
-          wait=238
-          ok=0
-          while [ $wait -gt 0 ] ; do
-            if grep "All managers started" gitblit.log ; then
-              ok=$((ok | 1))
-            fi
-            if grep "Started Wicket" gitblit.log ; then
-              ok=$((ok | 2))
-            fi
-            if grep "Started ServerConnector" gitblit.log ; then
-              ok=$((ok | 4))
-            fi
-
-            if [ $ok == 7 ] ; then
-              echo "Gitblit started okay"
-              wait=0
-            else
-              echo "Waiting for Gitblit to start successfully"
-              sleep 2
-              : $((wait -= 2))
-            fi
-
-            if grep "Failed" gitblit.log ; then
-              echo "Failure deteceted when starting Gitblit."
-              ok=-1
-              wait=0
-            fi
-          done 
-          
-          ./gitblit-stop.sh
-          sleep 2
-
-          if [ $ok != 7 ] ; then
-            echo "Gitblit could not be started successfully."
-            exit 11
+          echo "Event sender: ${{github.event.sender.login}}"
+          if [ ${{github.event_name}} == "push" ] ; then
+            echo "REL_USER=${{ github.event.pusher.name }}"
+            echo "REL_USER_EMAIL=${{ github.event.pusher.email }}" >> $GITHUB_ENV
+          elif [ ${{github.event_name}} == "workflow_dispatch" ] ; then
+            echo "REL_USER=??"
           fi
 
- 
+
+      - name: Checkout upstream repo
+        uses: actions/checkout@v2
+        with:
+          path: gitblit
+          repository: ${{ env.GH_ORG }}/gitblit
+
+      - name: Fetch all remote branches
+        working-directory: gitblit
+        run: |
+          git fetch --prune --depth=20 origin +refs/heads/*:refs/remotes/origin/*
+
+
+      - name: Find out Git user
+        working-directory: gitblit
+        run: |
+          # If present, use the user that triggered the release perform workflow with an action
+          if [ -n "$REL_USER" ] ; then
+
+            # Try to get the user's name
+            gh_user_name=$(curl -s ${{github.event.sender.url}} | jq -r .name)
+            if [ -n "$gh_user_name" ] ; then
+              commit=$(git rev-list --all -i --max-count=1 --author="$gh_user_name")
+            fi
+            if [ -n "$commit" ] ; then
+              commit=$(git rev-list --all -i --max-count=1 --author="$REL_USER")
+            fi
+
+            if [ -n "$commit" ] ; then
+              git show --no-patch $commit
+              user_name="$(git show --no-patch --pretty=format:"%an" $commit)"
+              user_email="$(git show --no-patch --pretty=format:"%ae" $commit)"
+            else
+              # Use the user name, but my email
+              user_name="$REL_USER"
+              user_email="2362065+flaix@users.noreply.github.com"
+            fi
+          else
+              # Use my user name and my email
+              user_name="flaix"
+              user_email="2362065+flaix@users.noreply.github.com"
+          fi
+
+          echo "REL_USER_NAME=${user_name}"
+          echo "REL_USER_NAME=${user_name}" >> $GITHUB_ENV
+          echo "REL_USER_NAME=${user_email}"
+          echo "REL_USER_NAME=${user_email}" >> $GITHUB_ENV
+
+
+
+      - name: Get SHA
+        working-directory: gitblit
+        run:  |
+          gh release download v${GITBLIT_VERSION} --pattern 'gitblit-*.tar.gz' --dir gitblit-GO
+          sha256sum gitblit-GO/gitblit-${GITBLIT_VERSION}.tar.gz
+
+
+
+  call_workflow:
+    uses: fzs/test_workflows/.github/workflows/called_wf.yaml@main
+    needs: build
