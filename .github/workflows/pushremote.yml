@@ -18,6 +18,7 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     outputs:
+      gitblit_version: ${{ steps.sha.outputs.version }}
       gitblit_sha: ${{ steps.sha.outputs.sha }}
     steps:
 
@@ -42,13 +43,25 @@ jobs:
           echo "$GITHUB_CONTEXT_EVENT"
 
       - name: Get user from event
+        id: get-userid
         run: |
           echo "Event sender: ${{github.event.sender.login}}"
           if [ ${{github.event_name}} == "push" ] ; then
             echo "REL_USER=${{ github.event.pusher.name }}" >> $GITHUB_ENV
             echo "REL_USER_EMAIL=${{ github.event.pusher.email }}" >> $GITHUB_ENV
+            echo "::set-output name=userid::${{ github.event.pusher.name }}"
+            echo "::set-output name=alt_name::${{ github.event.pusher.name }}"
+            echo "::set-output name=alt_email::${{ github.event.pusher.email }}"
+
           elif [ ${{github.event_name}} == "workflow_dispatch" ] ; then
-            echo "REL_USER={{github.event.sender.login}}" >> $GITHUB_ENV
+            echo "REL_USER=${{github.event.sender.login}}" >> $GITHUB_ENV
+            echo "::set-output name=userid::${{github.event.sender.login}}"
+            echo "::set-output name=alt_name::${{ github.event.pusher.name }}"
+            echo "::set-output name=alt_email::2362065+flaix@users.noreply.github.com"
+
+          else
+            echo "::set-output name=alt_name::flaix"
+            echo "::set-output name=alt_email::2362065+flaix@users.noreply.github.com"
           fi
 
 
@@ -65,45 +78,27 @@ jobs:
 
 
       - name: Find out Git user
+        id: get-git-props
+        working-directory: gitblit
+        uses: flaix/set-git-user-action@master
+        with:
+          userid: ${{ steps.get-userid.outputs.userid }}
+          alt_name: ${{ steps.get-userid.outputs.alt_name }}
+          alt_email: ${{ steps.get-userid.outputs.alt_email }}
+
+
+      - name: Record Git user
         working-directory: gitblit
         run: |
-          # If present, use the user that triggered the release perform workflow with an action
-          if [ -n "$REL_USER" ] ; then
-
-            # Try to get the user's name
-            gh_user_name=$(curl -s ${{github.event.sender.url}} | jq -r .name)
-            if [ -n "$gh_user_name" ] ; then
-              echo "Checking commits for author name $gh_user_name"
-              commit=$(git rev-list --all -i --max-count=1 --author="$gh_user_name")
-            fi
-            if [ -z "$commit" ] ; then
-              echo "Checking commits for author id $REL_USER"
-              commit=$(git rev-list --all -i --max-count=1 --author="$REL_USER")
-            fi
-
-            if [ -n "$commit" ] ; then
-              git show --no-patch $commit
-              user_name="$(git show --no-patch --pretty=format:"%an" $commit)"
-              user_email="$(git show --no-patch --pretty=format:"%ae" $commit)"
-            else
-              # Use the user name, but my email
-              echo "No commit found. Using $REL_USER and fixed email."
-              user_name="$REL_USER"
-              user_email="2362065+flaix@users.noreply.github.com"
-            fi
-          else
-              # Use my user name and my email
-              echo "Nothing available, using fixed name and email."
-              user_name="flaix"
-              user_email="2362065+flaix@users.noreply.github.com"
-          fi
-
+          user_name="${{ steps.get-git-props.outputs.name }}"
+          user_email="${{ steps.get-git-props.outputs.email }}"
+          
           echo "REL_USER_NAME=${user_name}"
           echo "REL_USER_NAME=${user_name}" >> $GITHUB_ENV
           echo "REL_USER_EMAIL=${user_email}"
           echo "REL_USER_EMAIL=${user_email}" >> $GITHUB_ENV
 
-          echo "REL_USER='${REL_USER}'" >> ../relinfo.sh
+          echo "REL_USER='${{ steps.get-userid.outputs.userid }}'" >> ../relinfo.sh
           echo "REL_USER_NAME='${user_name}'" >> ../relinfo.sh
           echo "REL_USER_EMAIL=${user_email}" >> ../relinfo.sh
 
@@ -122,6 +117,7 @@ jobs:
           cat ../relinfo.sh
 
           echo "::set-output name=sha::$sha"
+          echo "::set-output name=version::$GITBLIT_VERSION"
           
 
       - name: Upload release info
@@ -138,3 +134,11 @@ jobs:
     needs: build
     with:
       foo: ${{ needs.build.outputs.gitblit_sha }}
+
+
+  gitblit_docker:
+    uses: fzs/test_workflows/.github/workflows/called_wf.yaml@main
+    needs: [ build, call_workflow ]
+    with:
+      gitblit_version: ${{ needs.build.outputs.gitblit_version }}
+      gitblit_sha: ${{ needs.build.outputs.gitblit_sha }}
