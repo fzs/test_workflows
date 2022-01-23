@@ -60,6 +60,7 @@ jobs:
         run: |
           if [ -f relinfo.sh ] ; then
             echo "Including release info in environemnt"
+            cat relinfo.sh
             . relinfo.sh
           else
             echo "No release info found."

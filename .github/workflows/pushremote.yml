@@ -134,6 +134,7 @@ jobs:
     needs: build
     with:
       foo: ${{ needs.build.outputs.gitblit_sha }}
+      bar: ${{ needs.build.outputs.gitblit_version }}
 
 
   gitblit_docker:
