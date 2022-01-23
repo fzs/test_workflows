@@ -137,7 +137,7 @@ jobs:
 
 
   gitblit_docker:
-    uses: fzs/test_workflows/.github/workflows/called_wf.yaml@main
+    uses: flaix/gitblit-docker/.github/workflows/release-gitblit-docker.yaml@release-script
     needs: [ build, call_workflow ]
     with:
       gitblit_version: ${{ needs.build.outputs.gitblit_version }}
