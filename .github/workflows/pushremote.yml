@@ -79,9 +79,9 @@ jobs:
 
       - name: Find out Git user
         id: get-git-props
-        working-directory: gitblit
         uses: flaix/set-git-user-action@master
         with:
+          path: gitblit
           userid: ${{ steps.get-userid.outputs.userid }}
           alt_name: ${{ steps.get-userid.outputs.alt_name }}
           alt_email: ${{ steps.get-userid.outputs.alt_email }}
