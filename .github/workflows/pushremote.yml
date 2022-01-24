@@ -144,5 +144,5 @@ jobs:
       gitblit_version: ${{ needs.build.outputs.gitblit_version }}
       gitblit_sha: ${{ needs.build.outputs.gitblit_sha }}
     secrets:
-      GITBLIT_RELEASE_PAT: ${{ secrets.GITBLIT_RELEASE_PAT }}
+      GITBLIT_RELEASE_PAT: ${{ secrets.INTER_REPO_OPS_PAT }}
       DOCKERHUB_GB_TOKEN: ${{ secrets.GITBLIT_RELEASE_PAT }}
